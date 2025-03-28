@@ -25,12 +25,12 @@ class Recomendate extends StatelessWidget {
             width: 110,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              image: DecorationImage(
+              image: destination.images.isNotEmpty
+                  ? DecorationImage(
                 fit: BoxFit.cover,
-                image: NetworkImage(
-                  destination.image![0],
-                ),
-              ),
+                image: NetworkImage(destination.images[0]),
+              )
+                  : null,
             ),
           ),
           const SizedBox(width: 10),

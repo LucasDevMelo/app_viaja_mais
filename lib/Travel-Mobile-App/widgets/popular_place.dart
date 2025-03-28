@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:app_viaja_mais/Travel-Mobile-App/models/travel_model.dart';
 
 class PopularPlace extends StatelessWidget {
@@ -33,12 +34,12 @@ class PopularPlace extends StatelessWidget {
             width: MediaQuery.of(context).size.width * 0.75,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
-              image: DecorationImage(
+              image: destination.images.isNotEmpty
+                  ? DecorationImage(
                 fit: BoxFit.cover,
-                image: NetworkImage(
-                  destination.image![0],
-                ),
-              ),
+                image: NetworkImage(destination.images[0]),
+              )
+                  : null,
             ),
             child: Column(
               children: [
