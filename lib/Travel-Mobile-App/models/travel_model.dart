@@ -1,24 +1,84 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+
+class Comment {
+  final String title;
+  final String userImage;
+  final String userName;
+  final double rating;
+  final String datetime;
+  final String comment;
+
+  Comment({
+    required this.title,
+    required this.userImage,
+    required this.userName,
+    required this.rating,
+    required this.datetime,
+    required this.comment,
+  });
+
+  factory Comment.fromJson(Map<String, dynamic> json) {
+    return Comment(
+      title: json['title'],
+      userImage: json['userImage'],
+      userName: json['userName'],
+      rating: json['rating'].toDouble(),
+      datetime: json['datetime'],
+      comment: json['comment'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'userImage': userImage,
+      'userName': userName,
+      'rating': rating,
+      'datetime': datetime,
+      'comment': comment,
+    };
+  }
+}
 
 class TravelDestination {
   final String id, name, description, location, hours, duration;
-  final List<String> images;
-  final int review, age;
-  final double rate;
+  final List<String> imageUrls;
+  final int age;
+  final List<Comment> comments;
 
   TravelDestination({
     required this.id,
     required this.name,
     required this.description,
     required this.location,
-    required this.images,
-    required this.review,
-    required this.rate,
+    required this.imageUrls,
     required this.hours,
     required this.duration,
     required this.age,
+    required this.comments,
   });
+
+  factory TravelDestination.fromJson(Map<String, dynamic> json) {
+    List<Comment> loadedComments = [];
+    if (json['comments'] != null) {
+      Map<dynamic, dynamic> commentsMap = json['comments'];
+      loadedComments = commentsMap.entries
+          .map((entry) => Comment.fromJson(Map<String, dynamic>.from(entry.value)))
+          .toList();
+    }
+
+    return TravelDestination(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      location: json['location'],
+      imageUrls: List<String>.from(json['imageUrls']),
+      hours: json['hours'],
+      duration: json['duration'],
+      age: json['age'],
+      comments: loadedComments,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -26,65 +86,11 @@ class TravelDestination {
       'name': name,
       'description': description,
       'location': location,
-      'images': images,
-      'review': review,
-      'rate': rate,
+      'imageUrls': imageUrls,
       'hours': hours,
       'duration': duration,
       'age': age,
+      'comments': {for (var comment in comments) comment.datetime: comment.toJson()},
     };
   }
-
-  factory TravelDestination.fromJson(Map<String, dynamic> json) {
-    return TravelDestination(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      location: json['location'],
-      images: List<String>.from(json['images']),
-      review: json['review'],
-      rate: json['rate'].toDouble(),
-      hours: json['hours'],
-      duration: json['duration'],
-      age: json['age'],
-    );
-  }
-}
-
-final DatabaseReference databaseRef = FirebaseDatabase.instance.ref("destinations");
-
-Future<void> saveDestination(TravelDestination destination) async {
-  DatabaseReference newDestinationRef = databaseRef.push(); // Gera um ID único
-  String newId = newDestinationRef.key!;
-
-  // Criamos um novo objeto com o ID gerado
-  TravelDestination newDestination = TravelDestination(
-    id: newId,
-    name: destination.name,
-    description: destination.description,
-    location: destination.location,
-    images: destination.images,
-    review: destination.review,
-    rate: destination.rate,
-    hours: destination.hours, // Novo campo
-    duration: destination.duration, // Novo campo
-    age: destination.age, // Novo campo
-  );
-
-  await newDestinationRef.set(newDestination.toJson());
-}
-
-Future<List<TravelDestination>> fetchDestinations() async {
-  DatabaseEvent event = await databaseRef.once();
-  DataSnapshot snapshot = event.snapshot;
-
-  if (snapshot.value == null) return [];
-
-  Map<dynamic, dynamic> data = snapshot.value as Map<dynamic, dynamic>;
-  return data.entries.map((entry) {
-    return TravelDestination.fromJson({
-      'id': entry.key, // Pegamos o ID gerado pelo Firebase
-      ...Map<String, dynamic>.from(entry.value),
-    });
-  }).toList();
 }

@@ -1,3 +1,5 @@
+import 'package:app_viaja_mais/Travel-Mobile-App/pages/sign_in.dart';
+import 'package:app_viaja_mais/Travel-Mobile-App/pages/sign_up.dart';
 import 'package:flutter/material.dart';
 import 'package:app_viaja_mais/Travel-Mobile-App/const.dart';
 import 'package:app_viaja_mais/Travel-Mobile-App/models/onboard_model.dart';
@@ -12,6 +14,7 @@ class TravelOnBoardingScreen extends StatefulWidget {
 
 class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
   int currentIndex = 0;
+
   Widget dotIndicator(int index) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
@@ -56,16 +59,15 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                     GestureDetector(
                       onTap: () {
                         Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TravelHomeScreen(),
-                            ),
-                            (route) => false);
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TravelHomeScreen(),
+                          ),
+                              (route) => false,
+                        );
                       },
                       child: Visibility(
-                        visible: onboarding.length - 1 != currentIndex
-                            ? true
-                            : false,
+                        visible: onboarding.length - 1 != currentIndex,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 15,
@@ -78,7 +80,7 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Text(
-                            "Skip",
+                            "Pular",
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w400,
@@ -94,26 +96,33 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                       children: [
                         Text(
                           onboarding[currentIndex].name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 70,
                             color: Colors.white,
                             fontWeight: FontWeight.w400,
                             height: 1,
+                            shadows: <Shadow>[ // Adiciona sombra ao texto
+                              Shadow(
+                                offset: Offset(2.0, 2.0),
+                                blurRadius: 3.0,
+                                color: Color.fromARGB(150, 0, 0, 0),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 20),
                         const Text(
-                          "We Travelin are ready to help you on\nvacation around Nepal",
+                          "Crie memórias que duram para sempre. \nDescubra destinos escondidos e apaixone-se por novas culturas.",
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
-                        )
+                        ),
                       ],
-                    )
+                    ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -138,14 +147,15 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                       color: Colors.white,
                       child: Column(
                         children: [
+                          // Botão "Vamos começar" agora leva para a tela de cadastro
                           GestureDetector(
                             onTap: () {
-                              Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const TravelHomeScreen(),
-                                  ),
-                                  (route) => false);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SignUpScreen(),
+                                ),
+                              );
                             },
                             child: Container(
                               height: 75,
@@ -166,7 +176,7 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      "Let's Get Started",
+                                      "Vamos começar",
                                       style: TextStyle(
                                         fontSize: 20,
                                         color: Colors.white,
@@ -178,31 +188,42 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                                       Icons.arrow_forward,
                                       color: Colors.white,
                                       size: 25,
-                                    )
+                                    ),
                                   ],
                                 ),
                               ),
                             ),
                           ),
                           const SizedBox(height: 30),
-                          const Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: "already have account? ",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                  ),
+                          // Texto clicável para ir para a tela de login
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => LoginScreen(),
                                 ),
-                                TextSpan(
-                                  text: "Login",
-                                  style: TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
+                              );
+                            },
+                            child: const Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: "Já tem uma conta? ",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  TextSpan(
+                                    text: "Login",
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -213,7 +234,7 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );
