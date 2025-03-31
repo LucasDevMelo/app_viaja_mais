@@ -74,8 +74,8 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Adicionar Destino'),
-        backgroundColor: Colors.amber,
+        title:  Text('Adicionar Destino'),
+        backgroundColor: const Color(0xFF263892),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -95,7 +95,7 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
 
               ElevatedButton(
                 onPressed: addDestination,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+                style: ElevatedButton.styleFrom(backgroundColor:Color(0xFF263892)),
                 child: const Text('Adicionar Destino', style: TextStyle(color: Colors.white)),
               ),
             ],
@@ -113,9 +113,9 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.amber),
+          labelStyle: const TextStyle(color: Color(0xFF263892)),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.yellow),
+            borderSide: BorderSide(color: Color(0xFF263892)),
           ),
         ),
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,

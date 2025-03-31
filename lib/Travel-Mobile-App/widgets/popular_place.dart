@@ -1,192 +1,211 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:app_viaja_mais/Travel-Mobile-App/models/travel_model.dart';
 
-class PopularPlace extends StatefulWidget {
+class PopularPlace extends StatelessWidget {
   final TravelDestination destination;
 
   const PopularPlace({super.key, required this.destination});
-  @override
-  State<PopularPlace> createState() => _PopularPlaceState();
-}
-
-class _PopularPlaceState extends State<PopularPlace> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  List<TravelDestination> destinations = [];
-  bool isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    fetchDestinations();
-  }
-
-  Future<void> fetchDestinations() async {
-    try {
-      QuerySnapshot querySnapshot = await _firestore.collection('destinations').get();
-
-      List<TravelDestination> fetchedDestinations = querySnapshot.docs.map((doc) {
-        return TravelDestination.fromJson({
-          'id': doc.id,
-          ...doc.data() as Map<String, dynamic>,
-        });
-      }).toList();
-
-      setState(() {
-        destinations = fetchedDestinations;
-        isLoading = false;
-      });
-    } catch (e) {
-      print("Erro ao buscar destinos: $e");
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    return isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : destinations.isEmpty
-        ? const Center(child: Text("Nenhum destino encontrado."))
-        : ListView.builder(
-      scrollDirection: Axis.horizontal,
-      itemCount: destinations.length,
-      itemBuilder: (context, index) {
-        return destinationCard(destinations[index]);
-      },
+    double averageRating = _calculateAverageRating(destination.comments);
+    int totalReviews = destination.comments.length;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal, // Permite rolagem horizontal
+      child: Container(
+        height: 200,
+        width: MediaQuery.of(context).size.width * 0.75,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            _buildImageSection(context),
+            _buildGradientOverlay(),
+            _buildInfoOverlay(averageRating, totalReviews),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget destinationCard(TravelDestination destination) {
-    String rate = _calculateAverageRating(destination.comments);
+  // Cálculo da média das avaliações
+  double _calculateAverageRating(List<Comment> comments) {
+    if (comments.isEmpty) return 0.0;
+    double totalRating = comments.fold(0.0, (sum, comment) => sum + (comment.rating ?? 0.0));
+    return totalRating / comments.length;
+  }
 
-    return Stack(
-      alignment: Alignment.bottomCenter,
-      children: [
-        Positioned(
-          bottom: 10,
-          right: 20,
-          left: 20,
-          child: Container(
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12.withOpacity(0.1),
-                  spreadRadius: 5,
-                  blurRadius: 5,
-                ),
-              ],
-            ),
+  // Busca a URL da imagem do Firebase Storage
+  Future<String> _getImageUrl(String imagePath) async {
+    try {
+      return await FirebaseStorage.instance.ref(imagePath).getDownloadURL();
+    } catch (e) {
+      print("Erro ao obter URL da imagem: $e");
+      return "";
+    }
+  }
+
+  // Exibe a imagem com fallback
+  Widget _buildImageSection(BuildContext context) {
+    if (destination.imageUrls.isEmpty) {
+      return _placeholderImage();
+    }
+
+    String imageUrl = destination.imageUrls[0];
+
+    if (imageUrl.startsWith("gs://") || imageUrl.contains("/o/")) {
+      return FutureBuilder<String>(
+        future: _getImageUrl(imageUrl),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return _loadingImage();
+          }
+          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+            return _placeholderImage();
+          }
+          return _networkImage(snapshot.data!, context);
+        },
+      );
+    } else {
+      return _networkImage(imageUrl, context);
+    }
+  }
+
+  // Exibe a imagem da rede com tratamento de erro
+  Widget _networkImage(String url, BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(15),
+      child: Image.network(
+        url,
+        height: 200,
+        width: MediaQuery.of(context).size.width * 0.75,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _loadingImage();
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return _placeholderImage();
+        },
+      ),
+    );
+  }
+
+  // Overlay de gradiente para melhorar a leitura do texto
+  Widget _buildGradientOverlay() {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.transparent,
+              Colors.black.withOpacity(0.6),
+            ],
           ),
         ),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(15),
-          child: Container(
-            height: 210,
-            width: MediaQuery.of(context).size.width * 0.75,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              image: DecorationImage(
-                fit: BoxFit.cover,
-                image: _getImage(destination.imageUrls),
+      ),
+    );
+  }
+
+  // Exibe as informações no card, agora com rolagem
+  Widget _buildInfoOverlay(double averageRating, int totalReviews) {
+    return Positioned(
+      bottom: 10,
+      left: 12,
+      right: 12,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.vertical, // Permite rolagem vertical do texto se necessário
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              destination.name,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
               ),
+              maxLines: 2, // Permite até 2 linhas de texto antes de cortar
+              overflow: TextOverflow.ellipsis,
             ),
-            child: Column(
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Spacer(),
-                Container(
-                  color: Colors.black.withOpacity(0.7),
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            destination.name,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.location_on,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                destination.location,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.star_rounded,
-                            size: 22,
-                            color: Colors.amber[800],
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            rate,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                const Icon(Icons.location_on, color: Colors.white, size: 14),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    destination.location,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                    maxLines: 2, // Permite até 2 linhas de texto para a localização
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                Row(
+                  children: [
+                    Icon(Icons.star_rounded, size: 16, color: Colors.amber[700]),
+                    const SizedBox(width: 4),
+                    Text(
+                      averageRating > 0 ? averageRating.toStringAsFixed(1) : "N/A",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  // Calcula a média das avaliações
-  String _calculateAverageRating(List<Comment> comments) {
-    if (comments.isEmpty) return "-";
-
-    List<double> ratings = comments
-        .where((comment) => comment.rating != null)
-        .map((comment) => comment.rating!)
-        .toList();
-
-    if (ratings.isEmpty) return "-";
-
-    double average = ratings.reduce((a, b) => a + b) / ratings.length;
-    return average.toStringAsFixed(1);
+  // Placeholder para erro de imagem
+  Widget _placeholderImage() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        color: Colors.grey[300],
+      ),
+      child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+    );
   }
 
-  // Obtém a imagem com fallback
-  ImageProvider _getImage(List<String> imageUrls) {
-    if (imageUrls.isNotEmpty && imageUrls[0].isNotEmpty) {
-      return NetworkImage(imageUrls[0]);
-    }
-    return const AssetImage("assets/img/default.jpg");
+  // Placeholder para carregamento
+  Widget _loadingImage() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        color: Colors.grey[300],
+      ),
+      child: const Center(child: CircularProgressIndicator()),
+    );
   }
 }

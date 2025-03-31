@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:app_viaja_mais/Travel-Mobile-App/models/travel_model.dart';
 
 class RecommendedDestination extends StatelessWidget {
@@ -43,32 +44,99 @@ class RecommendedDestination extends StatelessWidget {
   // Função para calcular a média das avaliações
   double _calculateAverageRating(List<Comment> comments) {
     if (comments.isEmpty) return 0.0;
-
-    double totalRating = comments.fold(0.0, (sum, comment) => sum + (comment.rating ?? 0.0));
+    double totalRating = comments.fold(0.0, (sum, comment) => sum + (comment.rating));
     return totalRating / comments.length;
   }
 
-  // Widget para exibir a imagem
+  // Função para buscar a URL da imagem do Firebase Storage
+  Future<String> _getImageUrl(String imagePath) async {
+    try {
+      return await FirebaseStorage.instance.ref(imagePath).getDownloadURL();
+    } catch (e) {
+      print("Erro ao obter URL da imagem: $e");
+      return ""; // Retorna string vazia se falhar
+    }
+  }
+
+  // Widget para exibir a imagem com tratamento de erro e loading
   Widget _buildImageSection() {
+    if (destination.imageUrls.isEmpty) {
+      return _placeholderImage();
+    }
+
+    String imageUrl = destination.imageUrls[0];
+
+    // Se a URL parecer ser do Firebase Storage, buscar URL real
+    if (imageUrl.startsWith("gs://") || imageUrl.contains("/o/")) {
+      return FutureBuilder<String>(
+        future: _getImageUrl(imageUrl),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return _loadingImage();
+          }
+          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+            return _placeholderImage();
+          }
+          return _networkImage(snapshot.data!);
+        },
+      );
+    } else {
+      return _networkImage(imageUrl);
+    }
+  }
+
+  // Função para exibir uma imagem da rede com tratamento de erro
+  Widget _networkImage(String url) {
     return Container(
       height: 95,
       width: 110,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        image: destination.imageUrls.isNotEmpty
-            ? DecorationImage(
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          url,
           fit: BoxFit.cover,
-          image: NetworkImage(destination.imageUrls[0]),
-        )
-            : const DecorationImage(
-          fit: BoxFit.cover,
-          image: AssetImage("assets/images/placeholder.jpg"), // Imagem padrão
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return _loadingImage();
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return _placeholderImage();
+          },
         ),
       ),
     );
   }
 
-  // Widget para exibir as informações
+  // Placeholder para erro de imagem
+  Widget _placeholderImage() {
+    return Container(
+      height: 95,
+      width: 110,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: Colors.grey[300],
+      ),
+      child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+    );
+  }
+
+  // Placeholder para carregamento
+  Widget _loadingImage() {
+    return Container(
+      height: 95,
+      width: 110,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: Colors.grey[300],
+      ),
+      child: const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  // Widget para exibir as informações do destino
   Widget _buildInfoSection(double averageRating, int totalReviews) {
     return Expanded(
       child: Column(

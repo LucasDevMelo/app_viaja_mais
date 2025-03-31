@@ -1,64 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart';
-
-class TravelDestination {
-  final String id, name, description, location;
-  final List<String> images;
-  final int review;
-  final double rate;
-
-  TravelDestination({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.location,
-    required this.images,
-    required this.review,
-    required this.rate,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'location': location,
-      'images': images,
-      'review': review,
-      'rate': rate,
-    };
-  }
-
-  factory TravelDestination.fromJson(Map<String, dynamic> json) {
-    return TravelDestination(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      location: json['location'],
-      images: List<String>.from(json['images']),
-      review: json['review'],
-      rate: json['rate'].toDouble(),
-    );
-  }
-}
-
-final DatabaseReference databaseRef = FirebaseDatabase.instance.ref("destinations");
-
-Future<void> saveDestination(TravelDestination destination) async {
-  await databaseRef.child(destination.id).set(destination.toJson());
-}
-
-Future<List<TravelDestination>> fetchDestinations() async {
-  DatabaseEvent event = await databaseRef.once();
-  DataSnapshot snapshot = event.snapshot;
-
-  if (snapshot.value == null) return [];
-
-  Map<dynamic, dynamic> data = snapshot.value as Map<dynamic, dynamic>;
-  return data.entries.map((entry) {
-    return TravelDestination.fromJson(Map<String, dynamic>.from(entry.value));
-  }).toList();
-}
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:app_viaja_mais/Travel-Mobile-App/const.dart';
+import 'package:app_viaja_mais/Travel-Mobile-App/models/travel_model.dart';
 
 class PlaceDetailScreen extends StatefulWidget {
   final String destinationId;
@@ -71,19 +15,35 @@ class PlaceDetailScreen extends StatefulWidget {
 class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   TravelDestination? destination;
   bool isLoading = true;
+  PageController pageController = PageController();
+  int currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    fetchDestination();
+    fetchDestinationData();
   }
 
-  Future<void> fetchDestination() async {
-    DatabaseEvent event = await databaseRef.child(widget.destinationId).once();
-    DataSnapshot snapshot = event.snapshot;
-    if (snapshot.value != null) {
+  Future<void> fetchDestinationData() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('destinations')
+          .doc(widget.destinationId)
+          .get();
+
+      if (doc.exists) {
+        setState(() {
+          destination = TravelDestination.fromJson(doc.data() as Map<String, dynamic>);
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (error) {
+      print("Erro ao buscar destino: $error");
       setState(() {
-        destination = TravelDestination.fromJson(Map<String, dynamic>.from(snapshot.value as Map));
         isLoading = false;
       });
     }
@@ -91,38 +51,151 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (destination == null) {
+      return const Scaffold(
+        body: Center(child: Text("Destino não encontrado")),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        title: const Text("Detalhes"),
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : destination == null
-          ? const Center(child: Text("Destino não encontrado"))
-          : Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(destination!.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Text(destination!.location, style: const TextStyle(fontSize: 18, color: Colors.grey)),
-            const SizedBox(height: 10),
-            Text(destination!.description),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: destination!.images.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: Image.network(destination!.images[index], width: 200, height: 200, fit: BoxFit.cover),
-                  );
-                },
+        backgroundColor: Colors.white,
+        leadingWidth: 64,
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 10),
+            child: Container(
+              margin: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.black12),
               ),
+              child: const Icon(Icons.arrow_back_ios_new),
             ),
-          ],
+          ),
+        ),
+        centerTitle: true,
+        title: const Text(
+          "Detalhes",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+        actions: [
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.black12),
+            ),
+            child: const Icon(Icons.bookmark_outline, size: 30),
+          ),
+          const SizedBox(width: 10),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 400,
+                child: PageView.builder(
+                  controller: pageController,
+                  itemCount: destination!.imageUrls.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      currentPage = index;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image.network(
+                        destination!.imageUrls[index],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              DefaultTabController(
+                length: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const TabBar(
+                      labelColor: blueTextColor,
+                      labelStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                      unselectedLabelColor: Colors.black,
+                      indicatorColor: blueTextColor,
+                      tabs: [
+                        Tab(text: 'Visão geral'),
+                        Tab(text: 'Detalhes'),
+                        Tab(text: 'Avaliações'),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 400,
+                      child: TabBarView(
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.access_time),
+                                title: Text("Horários: ${destination!.hours}"),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.timer),
+                                title: Text("Duração: ${destination!.duration}"),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.group),
+                                title: Text("Idades: ${destination!.age}"),
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Text(
+                              destination!.description,
+                              style: const TextStyle(color: Colors.black54, fontSize: 14, height: 1.5),
+                            ),
+                          ),
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: destination!.comments.length,
+                            itemBuilder: (context, index) {
+                              final comment = destination!.comments[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: NetworkImage(comment.userImage),
+                                ),
+                                title: Text(comment.userName),
+                                subtitle: Text(comment.comment),
+                                trailing: Text('${comment.rating} ★'),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
