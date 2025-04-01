@@ -87,7 +87,7 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
               _buildDescriptionEditor(),
               _buildTextField(hoursController, 'Horário'),
               _buildTextField(durationController, 'Duração'),
-              _buildTextField(ageController, 'Idade recomendada', isNumber: true),
+              _buildTextField(ageController, 'Idade recomendada'),
               _buildTextField(imageUrlController, 'URLs das Imagens (separadas por vírgula)'),
 
               const SizedBox(height: 20),
@@ -116,8 +116,7 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
           ),
           child: Column(
             children: [
-              quill.QuillToolbar.simple(configurations: QuillSimpleToolbarConfigurations(controller: _quillController)
-              ),
+              quill.QuillToolbar.simple(configurations: QuillSimpleToolbarConfigurations(controller: _quillController)),
               SizedBox(height: 10),
               Container(
                 height: 200,
@@ -128,8 +127,7 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
                   configurations: QuillEditorConfigurations(
                     controller: _quillController,
                   ),
-                )
-
+                ),
               ),
             ],
           ),
@@ -138,7 +136,7 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, {bool isNumber = false}) {
+  Widget _buildTextField(TextEditingController controller, String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextFormField(
@@ -150,13 +148,9 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
             borderSide: BorderSide(color: Color(0xFF263892)),
           ),
         ),
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Por favor insira $label';
-          }
-          if (isNumber && int.tryParse(value) == null) {
-            return 'Insira um número válido';
           }
           return null;
         },
