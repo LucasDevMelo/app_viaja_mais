@@ -81,6 +81,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
           children: [
             const SizedBox(height: 20),
             sectionHeader("Popular"),
+            const SizedBox(height: 20),
             isLoading
                 ? const Center(
               child: Padding(
@@ -92,6 +93,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
                 ? const Center(child: Text("Erro ao carregar dados"))
                 : horizontalScrollList(popular),
             sectionHeader("Recomendados para você"),
+            const SizedBox(height: 20),
             isLoading
                 ? const Center(
               child: Padding(
