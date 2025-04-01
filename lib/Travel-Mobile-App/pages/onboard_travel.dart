@@ -169,7 +169,7 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                                     blurRadius: 15,
                                   ),
                                 ],
-                                color: kButtonColor,
+                                color:const Color(0xFF263892),
                               ),
                               child: const Center(
                                 child: Row(
@@ -186,7 +186,7 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                                     SizedBox(width: 5),
                                     Icon(
                                       Icons.arrow_forward,
-                                      color: Colors.white,
+                                      color: const Color(0xFFF68712),
                                       size: 25,
                                     ),
                                   ],
@@ -217,7 +217,7 @@ class _TravelOnBoardingScreenState extends State<TravelOnBoardingScreen> {
                                   TextSpan(
                                     text: "Login",
                                     style: TextStyle(
-                                      color: Colors.blue,
+                                      color:  Color(0xFFF68712),
                                       fontWeight: FontWeight.w600,
                                       fontSize: 16,
                                     ),
