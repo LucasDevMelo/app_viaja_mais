@@ -18,7 +18,8 @@ class TravelHomeScreen extends StatefulWidget {
 class _TravelHomeScreenState extends State<TravelHomeScreen> {
   List<model.TravelDestination> popular = [];
   List<model.TravelDestination> recomendate = [];
-  int selectedPage = 0;
+  List<String> cities = ["Todas as cidades"];
+  String selectedCity = "Todas as cidades";
   bool isLoading = true;
   bool hasError = false;
 
@@ -32,24 +33,56 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
   @override
   void initState() {
     super.initState();
+    fetchCities();
     fetchDestinationsFromDB();
   }
 
-  Future<void> fetchDestinationsFromDB() async {
+  /// 🔹 Busca todas as cidades disponíveis no Firebase
+  Future<void> fetchCities() async {
     try {
       FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-      // Consultando a coleção de destinos
       QuerySnapshot querySnapshot = await firestore.collection("destinations").get();
+
+      Set<String> loadedCities = {"Todas as cidades"};
+      for (var doc in querySnapshot.docs) {
+        String city = doc["location"];
+        loadedCities.add(city);
+      }
+
+      setState(() {
+        cities = loadedCities.toList();
+      });
+    } catch (e) {
+      print("Erro ao carregar cidades: $e");
+    }
+  }
+
+  /// 🔹 Busca destinos do Firebase, filtrando pela cidade selecionada
+  Future<void> fetchDestinationsFromDB() async {
+    try {
+      setState(() {
+        isLoading = true;
+        hasError = false;
+      });
+
+      FirebaseFirestore firestore = FirebaseFirestore.instance;
+      Query query = firestore.collection("destinations");
+
+      if (selectedCity != "Todas as cidades") {
+        query = query.where("location", isEqualTo: selectedCity);
+      }
+
+      QuerySnapshot querySnapshot = await query.get();
 
       if (querySnapshot.docs.isEmpty) {
         setState(() {
+          popular = [];
+          recomendate = [];
           isLoading = false;
         });
         return;
       }
 
-      // Convertendo os documentos para objetos TravelDestination
       List<model.TravelDestination> allDestinations = querySnapshot.docs.map((doc) {
         return model.TravelDestination.fromJson({
           'id': doc.id,
@@ -83,24 +116,14 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
             sectionHeader("Popular"),
             const SizedBox(height: 20),
             isLoading
-                ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(),
-              ),
-            )
+                ? const Center(child: CircularProgressIndicator())
                 : hasError
                 ? const Center(child: Text("Erro ao carregar dados"))
                 : horizontalScrollList(popular),
             sectionHeader("Recomendados para você"),
             const SizedBox(height: 20),
             isLoading
-                ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(),
-              ),
-            )
+                ? const Center(child: CircularProgressIndicator())
                 : hasError
                 ? const Center(child: Text("Erro ao carregar dados"))
                 : verticalList(recomendate),
@@ -120,18 +143,11 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black),
           ),
           const Text(
             "Ver todos",
-            style: TextStyle(
-              fontSize: 14,
-              color: blueTextColor,
-            ),
+            style: TextStyle(fontSize: 14, color: blueTextColor),
           )
         ],
       ),
@@ -145,12 +161,9 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
       child: Row(
         children: List.generate(
           list.length,
-              (index) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            child: GestureDetector(
-              onTap: () => navigateToDetail(list[index]),
-              child: PopularPlace(destination: list[index]),
-            ),
+              (index) => GestureDetector(
+            onTap: () => navigateToDetail(list[index]),
+            child: PopularPlace(destination: list[index]),
           ),
         ),
       ),
@@ -161,12 +174,9 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
     return Column(
       children: List.generate(
         list.length,
-            (index) => Padding(
-          padding: const EdgeInsets.only(bottom: 15),
-          child: GestureDetector(
-            onTap: () => navigateToDetail(list[index]),
-            child: RecommendedDestination(destination: list[index]),
-          ),
+            (index) => GestureDetector(
+          onTap: () => navigateToDetail(list[index]),
+          child: RecommendedDestination(destination: list[index]),
         ),
       ),
     );
@@ -198,15 +208,13 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
               (index) => GestureDetector(
             onTap: () {
               setState(() {
-                selectedPage = index;
+                // Trocar a página ao clicar (se necessário no futuro)
               });
             },
             child: Icon(
               icons[index],
               size: 32,
-              color: selectedPage == index
-                  ? Colors.white
-                  : Colors.white.withOpacity(0.4),
+              color: Colors.white.withOpacity(0.4),
             ),
           ),
         ),
@@ -214,13 +222,24 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
     );
   }
 
+  /// 🔹 AppBar com seletor de cidades
   AppBar headerParts() {
     return AppBar(
       elevation: 0,
       backgroundColor: const Color(0xFF263892),
-      title: const Text(
-        "Todas as cidades",
-        style: TextStyle(color: Colors.white),
+      title: GestureDetector(
+        onTap: showCityPicker,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              selectedCity,
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(width: 5),
+            const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+          ],
+        ),
       ),
       actions: [
         IconButton(
@@ -232,8 +251,31 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
             );
           },
         ),
-        const SizedBox(width: 15),
       ],
+    );
+  }
+
+  void showCityPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return ListView.builder(
+          shrinkWrap: true,
+          itemCount: cities.length,
+          itemBuilder: (context, index) {
+            return ListTile(
+              title: Text(cities[index]),
+              onTap: () {
+                setState(() {
+                  selectedCity = cities[index];
+                });
+                fetchDestinationsFromDB();
+                Navigator.pop(context);
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
