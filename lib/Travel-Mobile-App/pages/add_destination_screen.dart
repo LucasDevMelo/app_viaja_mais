@@ -35,7 +35,7 @@ class _AddTravelDestinationScreenState extends State<AddTravelDestinationScreen>
           imageUrls: imageUrlController.text.split(',').map((e) => e.trim()).toList(), // Remove espaços extras
           hours: hoursController.text,
           duration: durationController.text,
-          age: int.tryParse(ageController.text) ?? 0, // Evita erro caso o usuário insira um valor inválido
+          age: ageController.text,
           comments: [], // Inicialmente, sem comentários
         );
 

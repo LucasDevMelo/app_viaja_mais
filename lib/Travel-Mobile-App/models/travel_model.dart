@@ -41,9 +41,8 @@ class Comment {
 }
 
 class TravelDestination {
-  final String id, name, description, location, hours, duration;
+  final String id, name, description, location, hours, duration, age;
   final List<String> imageUrls;
-  final int age;
   final List<Comment> comments;
 
   TravelDestination({
