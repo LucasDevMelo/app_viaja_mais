@@ -14,7 +14,8 @@ class RecommendedDestination extends StatelessWidget {
     int totalReviews = destination.comments.length;
 
     return Container(
-      height: 105,
+      height: 90,
+      margin: const EdgeInsets.only(bottom: 16,left: 15,right: 15), // <-- margem entre os cards
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
