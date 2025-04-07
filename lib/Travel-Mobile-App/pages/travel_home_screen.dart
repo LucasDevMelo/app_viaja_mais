@@ -23,6 +23,8 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
   bool isLoading = true;
   bool hasError = false;
 
+  int selectedIndex = 0;
+
   final List<IconData> icons = [
     Iconsax.home,
     Iconsax.heart,
@@ -37,7 +39,6 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
     fetchDestinationsFromDB();
   }
 
-  /// 🔹 Busca todas as cidades disponíveis no Firebase
   Future<void> fetchCities() async {
     try {
       FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -57,7 +58,6 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
     }
   }
 
-  /// 🔹 Busca destinos do Firebase, filtrando pela cidade selecionada
   Future<void> fetchDestinationsFromDB() async {
     try {
       setState(() {
@@ -104,34 +104,46 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
     }
   }
 
+  /// 🔹 Lista de telas (home, favoritos, busca, perfil)
+  List<Widget> get pages => [
+    buildHomeContent(),
+    const Center(child: Text("❤️ Favoritos")),
+    const Center(child: Text("🔍 Buscar destinos")),
+    const Center(child: Text("👤 Meu perfil")),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: headerParts(),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            sectionHeader("Popular"),
-            const SizedBox(height: 20),
-            isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : hasError
-                ? const Center(child: Text("Erro ao carregar dados"))
-                : horizontalScrollList(popular),
-            sectionHeader("Recomendados para você"),
-            const SizedBox(height: 20),
-            isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : hasError
-                ? const Center(child: Text("Erro ao carregar dados"))
-                : verticalList(recomendate),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+      appBar: selectedIndex == 0 ? headerParts() : null,
+      body: pages[selectedIndex],
       bottomNavigationBar: bottomNavBar(),
+    );
+  }
+
+  Widget buildHomeContent() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          sectionHeader("Popular"),
+          const SizedBox(height: 20),
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : hasError
+              ? const Center(child: Text("Erro ao carregar dados"))
+              : horizontalScrollList(popular),
+          sectionHeader("Recomendados para você"),
+          const SizedBox(height: 20),
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : hasError
+              ? const Center(child: Text("Erro ao carregar dados"))
+              : verticalList(recomendate),
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 
@@ -193,7 +205,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
 
   Widget bottomNavBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
       decoration: BoxDecoration(
         color: kButtonColor,
         borderRadius: const BorderRadius.only(
@@ -208,13 +220,13 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
               (index) => GestureDetector(
             onTap: () {
               setState(() {
-                // Trocar a página ao clicar (se necessário no futuro)
+                selectedIndex = index;
               });
             },
             child: Icon(
               icons[index],
               size: 32,
-              color: Colors.white.withOpacity(0.4),
+              color: selectedIndex == index ? Colors.white : Colors.white.withOpacity(0.4),
             ),
           ),
         ),
@@ -222,7 +234,6 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
     );
   }
 
-  /// 🔹 AppBar com seletor de cidades
   AppBar headerParts() {
     return AppBar(
       elevation: 0,

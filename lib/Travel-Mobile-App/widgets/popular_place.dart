@@ -124,60 +124,69 @@ class PopularPlace extends StatelessWidget {
   }
 
   // Exibe as informações no card, agora com rolagem
+// Substitua somente a função _buildInfoOverlay pelo código abaixo:
+
   Widget _buildInfoOverlay(double averageRating, int totalReviews) {
     return Positioned(
-      bottom: 10,
-      left: 12,
-      right: 12,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical, // Permite rolagem vertical do texto se necessário
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              destination.name,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 2, // Permite até 2 linhas de texto antes de cortar
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Icon(Icons.location_on, color: Colors.white, size: 14),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    destination.location,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                    ),
-                    maxLines: 2, // Permite até 2 linhas de texto para a localização
-                    overflow: TextOverflow.ellipsis,
-                  ),
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(15),
+          bottomRight: Radius.circular(15),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          color: Colors.black.withOpacity(0.7),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                destination.name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
                 ),
-                Row(
-                  children: [
-                    Icon(Icons.star_rounded, size: 16, color: Colors.amber[700]),
-                    const SizedBox(width: 4),
-                    Text(
-                      averageRating > 0 ? averageRating.toStringAsFixed(1) : "N/A",
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Icon(Icons.location_on, color: Colors.white, size: 14),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      destination.location,
                       style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+                  ),
+                  Row(
+                    children: [
+                      Icon(Icons.star_rounded, size: 16, color: Colors.amber[700]),
+                      const SizedBox(width: 4),
+                      Text(
+                        averageRating > 0 ? averageRating.toStringAsFixed(1) : "N/A",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
