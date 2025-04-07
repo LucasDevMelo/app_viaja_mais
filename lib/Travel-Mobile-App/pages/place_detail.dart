@@ -86,6 +86,8 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
       appBar: AppBar(
         title: const Text("Detalhes"),
         backgroundColor: const Color(0xFF263892),
+        foregroundColor: Colors.white, // ← isso muda o texto e os ícones para branco
+        iconTheme: const IconThemeData(color: Colors.white), // ← reforça os ícones em branco
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(15),
@@ -156,6 +158,8 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                           padding: const EdgeInsets.all(10),
                           child: quill.QuillEditor.basic(
                             configurations: QuillEditorConfigurations(
+                              enableInteractiveSelection: false,
+                              showCursor: false,
                               controller: _quillController,
                             ),
                           ),
