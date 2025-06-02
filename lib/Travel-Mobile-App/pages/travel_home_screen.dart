@@ -10,31 +10,11 @@ import 'package:iconsax/iconsax.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'FavoritesScreen.dart';
+import 'ProfileScreen.dart';
 
 // --- Telas Provisórias (Placeholder) ---
 // Você pode mover estas para arquivos separados depois, se preferir
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("👤 Meu Perfil"),
-        backgroundColor:  const Color(0xFF263892), // Certifique-se de que esta cor é a desejada ou use kButtonColor
-        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-      ),
-      body: const Center(
-        child: Text(
-          "Informações do seu perfil e configurações estarão aqui.",
-          style: TextStyle(fontSize: 18),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-}
 
 // --- Seu TravelHomeScreen Existente ---
 class TravelHomeScreen extends StatefulWidget {
