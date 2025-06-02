@@ -8,32 +8,26 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:app_viaja_mais/Travel-Mobile-App/models/travel_model.dart' as model;
 import 'package:app_viaja_mais/Travel-Mobile-App/pages/place_detail.dart';
-// Importe suas outras telas aqui
-// Exemplo: import 'package:app_viaja_mais/Travel-Mobile-App/const.dart';
 
-// ▼▼▼ SUBSTITUA ESTES PLACEHOLDERS PELAS SUAS TELAS REAIS E IMPORTE-AS CORRETAMENTE ▼▼▼
-class PlaceholderLoginScreen extends StatelessWidget {
-  const PlaceholderLoginScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Login (Substitua)")),
-      body: const Center(child: Text("Esta é a sua Tela de Login (Substitua)")),
-    );
-  }
-}
+// ▼▼▼ IMPORTAÇÃO DA SUA TELA DE LOGIN ▼▼▼
+// Substitua pelo caminho correto para o seu arquivo sign_in.dart
+// Exemplo: import 'package:app_viaja_mais/Travel-Mobile-App/pages/sign_in.dart';
+import 'sign_in.dart'; // Certifique-se que este caminho está correto e que sign_in.dart tem uma classe como SignInScreen
+// ▲▲▲ IMPORTAÇÃO DA SUA TELA DE LOGIN ▲▲▲
 
+
+// ▼▼▼ PLACEHOLDER PARA TELA DE EDITAR PERFIL (PODE SER REMOVIDO SE NÃO USADO PARA OUTROS FINS) ▼▼▼
 class PlaceholderEditProfileScreen extends StatelessWidget {
   const PlaceholderEditProfileScreen({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Editar Perfil (Substitua)")),
-      body: const Center(child: Text("Esta é a sua Tela de Editar Perfil (Substitua)")),
+      appBar: AppBar(title: const Text("Editar Outras Informações (Substitua)")),
+      body: const Center(child: Text("Esta é a sua Tela de Editar Outras Informações (Substitua)")),
     );
   }
 }
-// ▲▲▲ SUBSTITUA ESTES PLACEHOLDERS PELAS SUAS TELAS REAIS E IMPORTE-AS CORRETAMENTE ▲▲▲
+// ▲▲▲ PLACEHOLDER PARA TELA DE EDITAR PERFIL ▲▲▲
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -57,20 +51,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<model.TravelDestination> _favoriteDestinations = [];
   bool _isLoadingFavorites = false;
 
+  // Estados para a seção de edição de perfil (senha)
+  bool _showEditProfileSection = false;
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _currentPasswordController;
+  late TextEditingController _newPasswordController;
+  late TextEditingController _confirmNewPasswordController;
+  bool _isUpdatingPassword = false;
+
+
   final Color _primaryAppColor = const Color(0xFF263892);
 
   @override
   void initState() {
     super.initState();
+    _currentPasswordController = TextEditingController();
+    _newPasswordController = TextEditingController();
+    _confirmNewPasswordController = TextEditingController();
     _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmNewPasswordController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadInitialData() async {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       _userId = currentUser.uid;
-      _userEmail = currentUser.email;
-      await _loadUserDataFromFirestore(); // Isso agora também carrega _favoriteDestinationIds
+      _userEmail = currentUser.email; // Captura o e-mail aqui
+      await _loadUserDataFromFirestore();
     } else {
       if (mounted) {
         setState(() {
@@ -83,8 +97,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserDataFromFirestore() async {
     if (!mounted) return;
-    // Não seta _isLoading = true aqui para não piscar a tela toda ao recarregar favoritos
-    // setState(() => _isLoading = true); // Removido para refresh mais suave
 
     if (_userId == null) {
       if (mounted) setState(() => _isLoading = false);
@@ -103,6 +115,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _userName = data['name'] ?? FirebaseAuth.instance.currentUser?.displayName ?? "Usuário";
           _profileImageUrl = data['profile_image_url'];
+          // O e-mail do Firebase Auth é geralmente a fonte mais confiável
+          _userEmail = FirebaseAuth.instance.currentUser?.email ?? _userEmail;
           if (data.containsKey('favorite_destination_ids') && data['favorite_destination_ids'] is List) {
             _favoriteDestinationIds = List<String>.from(data['favorite_destination_ids']);
             _favoriteCount = _favoriteDestinationIds.length;
@@ -115,15 +129,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (!mounted) return;
         setState(() {
           _userName = FirebaseAuth.instance.currentUser?.displayName ?? "Usuário";
+          _userEmail = FirebaseAuth.instance.currentUser?.email ?? _userEmail;
           _favoriteDestinationIds = [];
           _favoriteCount = 0;
         });
       }
     } catch (e) {
       print("Erro ao carregar dados do usuário do Firestore: $e");
-      // Tratar erro
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erro ao carregar dados do Firestore: ${e.toString()}")),
+        );
+      }
     } finally {
-      if (mounted && _isLoading) { // Só seta isLoading para false se era o carregamento inicial
+      if (mounted && _isLoading) {
         setState(() => _isLoading = false);
       }
     }
@@ -181,16 +200,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _refreshAllProfileData() async {
-    await _loadUserDataFromFirestore(); // Recarrega dados do usuário (incluindo IDs de favoritos)
-    if (_showFavoritesSection && mounted) { // Se a seção de favoritos estiver visível, recarrega os detalhes
+    await _loadUserDataFromFirestore();
+    if (_showFavoritesSection && mounted) {
       await _loadFavoriteDestinationsDetails();
-    } else if (mounted) { // Se não estiver visível, mas os IDs podem ter mudado, limpa os detalhes
+    } else if (mounted) {
       setState(() {
         _favoriteDestinations = [];
       });
     }
   }
-
 
   Future<void> _pickImage() async {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -199,24 +217,95 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    // ... (código de logout existente)
     try {
       await FirebaseAuth.instance.signOut();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const PlaceholderLoginScreen()),
+          MaterialPageRoute(
+            builder: (context) => LoginScreen(),
+          ),
               (Route<dynamic> route) => false,
         );
       }
     } catch (e) {
       print("Erro ao fazer logout: $e");
-      if(mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Erro ao fazer logout: ${e.toString()}")),
         );
       }
     }
   }
+
+  Future<void> _updatePassword() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    if (_newPasswordController.text != _confirmNewPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("As novas senhas não coincidem.")),
+      );
+      return;
+    }
+
+    setState(() => _isUpdatingPassword = true);
+
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || _userEmail == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Usuário não encontrado. Faça login novamente.")),
+      );
+      setState(() => _isUpdatingPassword = false);
+      return;
+    }
+
+    try {
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: _userEmail!,
+        password: _currentPasswordController.text,
+      );
+
+      // Reautenticar o usuário
+      await currentUser.reauthenticateWithCredential(credential);
+
+      // Atualizar a senha
+      await currentUser.updatePassword(_newPasswordController.text);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Senha atualizada com sucesso!")),
+      );
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmNewPasswordController.clear();
+      setState(() {
+        _showEditProfileSection = false; // Recolhe a seção após sucesso
+      });
+
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "Ocorreu um erro ao atualizar a senha.";
+      if (e.code == 'wrong-password') {
+        errorMessage = "Senha atual incorreta.";
+      } else if (e.code == 'weak-password') {
+        errorMessage = "A nova senha é muito fraca.";
+      } else if (e.code == 'requires-recent-login') {
+        errorMessage = "Esta operação é sensível e requer autenticação recente. Faça login novamente e tente de novo.";
+      }
+      print("Erro ao atualizar senha: ${e.code} - ${e.message}");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      print("Erro desconhecido ao atualizar senha: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Ocorreu um erro desconhecido.")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingPassword = false);
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -237,7 +326,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLoginPrompt() {
-    // ... (código _buildLoginPrompt existente)
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(30.0),
@@ -267,9 +355,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const PlaceholderLoginScreen()),
+                  MaterialPageRoute(
+                    builder: (context) =>  LoginScreen(),
+                  ),
                       (Route<dynamic> route) => false,
-                ).then((_) => _loadInitialData()); // Tenta recarregar após "login"
+                )
+                    .then((_) {
+                  _loadInitialData();
+                });
               },
               child: const Text("Fazer Login", style: TextStyle(color: Colors.white)),
             )
@@ -281,7 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileView() {
     return RefreshIndicator(
-      onRefresh: _refreshAllProfileData, // Atualiza todos os dados do perfil
+      onRefresh: _refreshAllProfileData,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -308,10 +401,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildMenuOption(
                     icon: Icons.account_circle_outlined,
                     title: "Informações Pessoais",
+                    trailingIcon: _showEditProfileSection ? Icons.expand_less : Icons.expand_more,
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const PlaceholderEditProfileScreen()));
+                      setState(() {
+                        _showEditProfileSection = !_showEditProfileSection;
+                        if (!_showEditProfileSection) { // Limpa campos ao recolher
+                          _currentPasswordController.clear();
+                          _newPasswordController.clear();
+                          _confirmNewPasswordController.clear();
+                          if (_formKey.currentState != null) {
+                            _formKey.currentState!.reset();
+                          }
+                        }
+                      });
                     },
                   ),
+                  if (_showEditProfileSection) _buildEditProfileSection(),
+
                   _buildMenuOption(
                     icon: Icons.favorite_outline,
                     title: "Seus Favoritos",
@@ -325,12 +431,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       });
                     },
                   ),
-                  // Seção de Favoritos (condicional)
                   if (_showFavoritesSection) _buildFavoritesSection(),
 
                   _buildMenuOption(
                     icon: Icons.logout_outlined,
-                    title: "Logout",
+                    title: "Sair",
                     isLogout: true,
                     onTap: _logout,
                   ),
@@ -344,6 +449,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildEditProfileSection() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            if (_userEmail != null) ...[
+              Text("E-mail: $_userEmail", style: TextStyle(fontSize: 15, color: Colors.grey[600])),
+              const SizedBox(height: 16),
+            ],
+            Text(
+              "Alterar Senha",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+            ),
+            TextFormField(
+              controller: _currentPasswordController,
+              decoration: const InputDecoration(
+                labelText: "Senha Atual",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+              obscureText: true,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "Por favor, insira sua senha atual.";
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _newPasswordController,
+              decoration: const InputDecoration(
+                labelText: "Nova Senha",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_person_outlined),
+              ),
+              obscureText: true,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "Por favor, insira a nova senha.";
+                }
+                if (value.length < 6) {
+                  return "A nova senha deve ter pelo menos 6 caracteres.";
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _confirmNewPasswordController,
+              decoration: const InputDecoration(
+                labelText: "Confirmar Nova Senha",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_reset_outlined),
+              ),
+              obscureText: true,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "Por favor, confirme a nova senha.";
+                }
+                if (value != _newPasswordController.text) {
+                  return "As senhas não coincidem.";
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: _isUpdatingPassword
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryAppColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                ),
+                onPressed: _updatePassword,
+                child: const Text("Salvar Nova Senha", style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
   Widget _buildFavoritesSection() {
     if (_isLoadingFavorites) {
       return const Padding(
@@ -351,20 +547,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (_favoriteDestinationIds.isEmpty) { // Verifica pelos IDs primeiro
+    if (_favoriteDestinationIds.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
         child: Text("Nenhum local favoritado ainda.", style: TextStyle(color: Colors.grey[600], fontSize: 15), textAlign: TextAlign.center),
       );
     }
-    if (_favoriteDestinations.isEmpty && !_isLoadingFavorites) { // Se IDs existem mas detalhes não carregaram (ou foram removidos)
+    if (_favoriteDestinations.isEmpty && !_isLoadingFavorites) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-        child: Text("Não foi possível carregar os detalhes dos favoritos ou não há favoritos.", style: TextStyle(color: Colors.grey[600], fontSize: 15), textAlign: TextAlign.center),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Não foi possível carregar os detalhes dos favoritos ou a lista está vazia.", style: TextStyle(color: Colors.grey[600], fontSize: 15), textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              TextButton(onPressed: _loadFavoriteDestinationsDetails, child: const Text("Tentar novamente"))
+            ],
+          )
       );
     }
 
-    // Usar um Column para o título e depois o ListView
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -385,11 +587,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (destination.imageUrls.isNotEmpty) {
               displayImageUrl = destination.imageUrls.firstWhere((url) => url.startsWith("http"), orElse: () => destination.imageUrls.first);
             }
+
             return ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(8.0),
-                child: displayImageUrl != null
+                child: displayImageUrl != null && displayImageUrl.isNotEmpty
                     ? CachedNetworkImage(
                   imageUrl: displayImageUrl,
                   width: 60, height: 60, fit: BoxFit.cover,
@@ -405,19 +608,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => PlaceDetailScreen(destinationId: destination.id)),
-                ).then((_) => _refreshAllProfileData()); // Atualiza tudo ao voltar
+                ).then((value) {
+                  _refreshAllProfileData();
+                });
               },
             );
           },
         ),
-        const SizedBox(height: 10), // Um pouco de espaço após a lista
+        const SizedBox(height: 10),
       ],
     );
   }
 
-
   Widget _buildProfileHeader() {
-    // ... (código _buildProfileHeader existente, sem alterações)
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 30, 20, 30),
       decoration: BoxDecoration(
@@ -478,7 +681,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatsRow() {
-    // ... (código _buildStatsRow existente, sem alterações)
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Row(
@@ -493,7 +695,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatItem(String label, String value, IconData icon) {
-    // ... (código _buildStatItem existente, sem alterações)
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
