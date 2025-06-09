@@ -1,3 +1,4 @@
+import 'package:app_viaja_mais/Travel-Mobile-App/pages/DestinationsByLocationScreen.dart';
 import 'package:app_viaja_mais/Travel-Mobile-App/pages/search.dart';
 import 'package:flutter/material.dart';
 import 'package:app_viaja_mais/Travel-Mobile-App/const.dart'; // Assumindo que kButtonColor e blueTextColor estão aqui
@@ -10,7 +11,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'FavoritesScreen.dart';
-import 'ProfileScreen.dart';
+import 'ProfileScreen.dart'; // Corrigido para ProfileScreen.dart se for esse o nome do arquivo
 
 // --- Telas Provisórias (Placeholder) ---
 // Você pode mover estas para arquivos separados depois, se preferir
@@ -58,7 +59,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
         String city = doc["location"];
         loadedCities.add(city);
       }
-
+      if (!mounted) return;
       setState(() {
         cities = loadedCities.toList();
       });
@@ -69,6 +70,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
   }
 
   Future<void> fetchDestinationsFromDB() async {
+    if (!mounted) return;
     try {
       setState(() {
         isLoading = true;
@@ -83,6 +85,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
       }
 
       QuerySnapshot querySnapshot = await query.get();
+      if (!mounted) return;
 
       if (querySnapshot.docs.isEmpty) {
         setState(() {
@@ -99,15 +102,14 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
           ...doc.data() as Map<String, dynamic>,
         });
       }).toList();
-
+      if (!mounted) return;
       setState(() {
         popular = allDestinations;
-        // Considere se você realmente precisa inverter para 'recomendate'
-        // ou se há uma lógica/fonte diferente para recomendações
-        recomendate = allDestinations.reversed.toList();
+        recomendate = allDestinations.isNotEmpty ? allDestinations.reversed.toList() : [];
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         hasError = true;
@@ -120,7 +122,6 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // ⭐ MODIFICADO: extendBodyBehindAppBar agora também verifica selectedIndex
       extendBodyBehindAppBar: selectedIndex == 0 && selectedCity != "Todas as cidades",
       appBar: selectedIndex == 0 ? headerParts() : null,
       body: pages[selectedIndex],
@@ -128,22 +129,19 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
     );
   }
 
-  // ⭐ MODIFICADO: Lista de 'pages' atualizada com as novas telas
   List<Widget> get pages => [
     buildHomeContent(),
-    const FavoritesScreen(),
-    const SearchScreen(),
-    const ProfileScreen(),
+    const FavoritesScreen(), // Certifique-se que FavoritesScreen está importado e definido
+    const SearchScreen(),    // Certifique-se que SearchScreen está importado e definido
+    const ProfileScreen(),   // Certifique-se que ProfileScreen está importado e definido
   ];
 
   Widget buildHomeContent() {
     final bool isCitySelected = selectedCity != "Todas as cidades";
     final double screenHeight = MediaQuery.of(context).size.height;
-    // Ajuste a lógica de overlayTop se cityHeroCard nem sempre estiver presente
     final double overlayTop = isCitySelected && popular.isNotEmpty && popular.first.imageUrls.isNotEmpty
         ? screenHeight * 0.30
         : 0;
-
 
     return Stack(
       children: [
@@ -155,60 +153,62 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
           top: overlayTop,
           left: 0,
           right: 0,
-          child: SizedBox(
-            height: screenHeight - overlayTop,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
+          bottom: 0, // ⭐ CORREÇÃO: Adicionado para limitar a parte inferior
+          child: Container( // ⭐ CORREÇÃO: SizedBox removido, Container diretamente
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, -4),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.only(top: 20, bottom: 80), // Adicionado preenchimento inferior para a NavBar
-                      children: [
-                        if (!isCitySelected) ...[
-                          sectionHeader("Explore o Brasil"),
-                          const SizedBox(height: 10),
-                          if (!isLoading && !hasError)
-                            imageCarousel(getCityImages()),
-                          const SizedBox(height: 20),
-                        ],
-                        sectionHeader("Popular"),
+              ],
+            ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    // O padding inferior existente de 80 deve ser suficiente.
+                    // Ele garante que o conteúdo rolável tenha espaço antes da borda inferior do Container.
+                    padding: const EdgeInsets.only(top: 20, bottom: 80),
+                    children: [
+                      if (!isCitySelected) ...[
+                        sectionHeader("Explore o Brasil"),
+                        const SizedBox(height: 10),
+                        if (!isLoading && !hasError)
+                          imageCarousel(getCityImages()),
                         const SizedBox(height: 20),
-                        isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : hasError
-                            ? const Center(child: Text("Erro ao carregar dados"))
-                            : popular.isEmpty
-                            ? Center(child: Text(selectedCity == "Todas as cidades" ? "Nenhum destino popular no momento." : "Nenhum destino popular para $selectedCity."))
-                            : horizontalScrollList(popular),
-                        sectionHeader("Recomendados para você"),
-                        const SizedBox(height: 20),
-                        isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : hasError
-                            ? const Center(child: Text("Erro ao carregar dados"))
-                            : recomendate.isEmpty
-                            ? Center(child: Text(selectedCity == "Todas as cidades" ? "Nenhuma recomendação no momento." : "Nenhuma recomendação para $selectedCity."))
-                            : verticalList(recomendate),
-                        const SizedBox(height: 20), // Space for content above bottom nav bar
                       ],
-                    ),
+                      sectionHeader("Popular"),
+                      const SizedBox(height: 20),
+                      isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : hasError
+                          ? const Center(child: Text("Erro ao carregar dados populares"))
+                          : popular.isEmpty
+                          ? Center(child: Text(selectedCity == "Todas as cidades" ? "Nenhum destino popular no momento." : "Nenhum destino popular para $selectedCity."))
+                          : horizontalScrollList(popular),
+                      sectionHeader("Recomendados para você"),
+                      const SizedBox(height: 20),
+                      isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : hasError
+                          ? const Center(child: Text("Erro ao carregar recomendações"))
+                          : recomendate.isEmpty
+                          ? Center(child: Text(selectedCity == "Todas as cidades" ? "Nenhuma recomendação no momento." : "Nenhuma recomendação para $selectedCity."))
+                          : verticalList(recomendate),
+                      // Este SizedBox dá um espaço extra no final do conteúdo rolável,
+                      // antes do padding inferior do ListView ser aplicado.
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -226,11 +226,9 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
             title,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black),
           ),
-          // Você pode querer ocultar "Ver todos" ou fazê-lo funcionar de forma diferente
-          // quando uma cidade específica é selecionada ou para diferentes seções.
           Text(
-            "Ver todos", // Isso poderia navegar para uma tela mostrando todos os itens daquela seção
-            style: TextStyle(fontSize: 14, color: blueTextColor),
+            "Ver todos",
+            style: TextStyle(fontSize: 14, color: blueTextColor), // Assumindo que blueTextColor está em const.dart
           )
         ],
       ),
@@ -240,13 +238,13 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
   Widget horizontalScrollList(List<model.TravelDestination> list) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.only(bottom: 40, left: 10),
+      padding: const EdgeInsets.only(bottom: 40, left: 10, right:10), // Adicionado right padding
       child: Row(
         children: List.generate(
           list.length,
               (index) => GestureDetector(
             onTap: () => navigateToDetail(list[index]),
-            child: PopularPlace(destination: list[index]),
+            child: PopularPlace(destination: list[index]), // Assumindo que PopularPlace está em widgets
           ),
         ),
       ),
@@ -254,7 +252,6 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
   }
 
   Widget verticalList(List<model.TravelDestination> list) {
-    // Adicionado preenchimento para evitar sobreposição com a barra de navegação inferior
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 15.0),
       child: Column(
@@ -262,7 +259,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
           list.length,
               (index) => GestureDetector(
             onTap: () => navigateToDetail(list[index]),
-            child: RecommendedDestination(destination: list[index]),
+            child: RecommendedDestination(destination: list[index]), // Assumindo que RecommendedDestination está em widgets
           ),
         ),
       ),
@@ -275,19 +272,22 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
       MaterialPageRoute(
         builder: (_) => PlaceDetailScreen(destinationId: destination.id),
       ),
-    );
+    ).then((_) {
+      // Opcional: Atualizar dados se algo puder mudar na tela de detalhes, como favoritos
+      // fetchDestinationsFromDB(); // Descomente se necessário
+    });
   }
 
   Widget bottomNavBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
       decoration: BoxDecoration(
-        color: kButtonColor,
+        color: kButtonColor, // Assumindo que kButtonColor está em const.dart
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
-        boxShadow: [ // Opcional: adicionada uma sombra sutil
+        boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             spreadRadius: 0,
@@ -301,6 +301,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
           icons.length,
               (index) => GestureDetector(
             onTap: () {
+              if (!mounted) return;
               setState(() {
                 selectedIndex = index;
               });
@@ -308,7 +309,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
             child: Icon(
               icons[index],
               size: 32,
-              color: selectedIndex == index ? Colors.white : Colors.white.withOpacity(0.6), // Opacidade ajustada para não selecionado
+              color: selectedIndex == index ? Colors.white : Colors.white.withOpacity(0.6),
             ),
           ),
         ),
@@ -318,17 +319,16 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
 
   AppBar headerParts() {
     final bool isCitySelected = selectedCity != "Todas as cidades";
-
     return AppBar(
       elevation: 0,
-      backgroundColor: isCitySelected ? Colors.transparent : const Color(0xFF263892), // Certifique-se de que esta cor é a desejada ou use kButtonColor
-      automaticallyImplyLeading: false, // Bom para a tela inicial
+      backgroundColor: isCitySelected ? Colors.transparent : const Color(0xFF263892),
+      automaticallyImplyLeading: false,
       title: GestureDetector(
         onTap: showCityPicker,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Flexible( // Adicionado Flexible para evitar estouro se o nome da cidade for longo
+            Flexible(
               child: Text(
                 selectedCity,
                 style: const TextStyle(color: Colors.white),
@@ -347,7 +347,11 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AddTravelDestinationScreen()),
-            );
+            ).then((_) {
+              // Atualizar cidades e destinos se um novo destino for adicionado
+              fetchCities();
+              fetchDestinationsFromDB();
+            });
           },
         ),
       ],
@@ -357,13 +361,14 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
   void showCityPicker() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Permite que a planilha ocupe mais altura, se necessário
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent, // Para permitir cantos arredondados no Container filho
       builder: (context) {
-        return DraggableScrollableSheet( // Torna mais flexível em altura
+        return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.4, // Começa com 40% da altura da tela
-          minChildSize: 0.2,   // Mínimo 20%
-          maxChildSize: 0.6,   // Máximo 60%
+          initialChildSize: 0.4,
+          minChildSize: 0.2,
+          maxChildSize: 0.6,
           builder: (_, scrollController) {
             return Container(
               decoration: const BoxDecoration(
@@ -375,7 +380,6 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
               ),
               child: Column(
                 children: [
-                  // Opcional: Adicionar uma alça (grabber)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Container(
@@ -389,8 +393,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
                   ),
                   Expanded(
                     child: ListView.builder(
-                      controller: scrollController, // Use o controller do DraggableScrollableSheet
-                      shrinkWrap: true,
+                      controller: scrollController,
                       itemCount: cities.length,
                       itemBuilder: (context, index) {
                         final bool isSelected = cities[index] == selectedCity;
@@ -399,11 +402,12 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
                             cities[index],
                             style: TextStyle(
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? kButtonColor : Colors.black87,
+                              color: isSelected ? kButtonColor : Colors.black87, // Assumindo kButtonColor
                             ),
                           ),
-                          trailing: isSelected ? Icon(Icons.check, color: kButtonColor) : null,
+                          trailing: isSelected ? Icon(Icons.check, color: kButtonColor) : null, // Assumindo kButtonColor
                           onTap: () {
+                            if (!mounted) return;
                             setState(() {
                               selectedCity = cities[index];
                             });
@@ -425,30 +429,23 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
 
   List<Map<String, String>> getCityImages() {
     final Map<String, String> cityToImage = {};
-
-    // Filtra destinos populares para incluir apenas aqueles que têm URLs de imagem
-    // e não são "Todas as cidades" (se "Todas as cidades" puder ser uma localização)
     for (var dest in popular.where((d) => d.location != "Todas as cidades" && d.imageUrls.isNotEmpty)) {
       if (!cityToImage.containsKey(dest.location)) {
         cityToImage[dest.location] = dest.imageUrls.first;
       }
     }
-    if (cityToImage.isEmpty && popular.isNotEmpty && popular.first.imageUrls.isNotEmpty) {
-      // Lógica de fallback ou imagem padrão, se necessário, embora este carrossel seja para explorar cidades
-    }
-
-
     return cityToImage.entries
         .map((entry) => {'city': entry.key, 'imageUrl': entry.value})
         .toList();
   }
 
+  // Em _TravelHomeScreenState
+
   Widget imageCarousel(List<Map<String, String>> cityImages) {
     if (cityImages.isEmpty) {
       return const SizedBox(
           height: 120,
-          child: Center(child: Text("Nenhuma cidade para explorar no momento."))
-      );
+          child: Center(child: Text("Nenhuma cidade para explorar no momento.")));
     }
     return SizedBox(
       height: 120,
@@ -459,27 +456,27 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
         itemBuilder: (context, index) {
           final city = cityImages[index]['city']!;
           final imageUrl = cityImages[index]['imageUrl']!;
-          // Removida a lógica isFirst e isLast para o raio da borda, pois estava causando problemas com a margem
-          // Aplique um raio de borda consistente a todos os itens ou lide com as margens de forma diferente
-
           return GestureDetector(
             onTap: () {
-              setState(() {
-                selectedCity = city;
-              });
-              fetchDestinationsFromDB();
+              // ⭐ CORREÇÃO AQUI ⭐
+              // Passando a variável 'city' que contém o nome correto da localização.
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DestinationsByLocationScreen(locationName: city),
+                ),
+              );
             },
             child: Container(
               width: 200,
-              margin: EdgeInsets.only(right: index == cityImages.length - 1 ? 0 : 10), // Adiciona margem, exceto para o último item
+              margin: EdgeInsets.only(right: index == cityImages.length - 1 ? 0 : 10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15), // Raio de borda consistente
+                borderRadius: BorderRadius.circular(15),
                 image: DecorationImage(
                   image: NetworkImage(imageUrl),
                   fit: BoxFit.cover,
-                  onError: (exception, stackTrace) { // Lidar com erros de carregamento de imagem
+                  onError: (exception, stackTrace) {
                     print('Error loading image: $imageUrl, $exception');
-                    // Você poderia exibir uma imagem provisória aqui
                   },
                 ),
               ),
@@ -487,7 +484,7 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15), // Raio de borda consistente
+                      borderRadius: BorderRadius.circular(15),
                       color: Colors.black.withOpacity(0.5),
                     ),
                   ),
@@ -517,15 +514,11 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
       ),
     );
   }
-
   Widget cityHeroCard() {
-    // Garanta que a lista popular não esteja vazia e que o primeiro item tenha imagens
     if (popular.isEmpty || popular.first.imageUrls.isEmpty) return const SizedBox.shrink();
-
     final String imageUrl = popular.first.imageUrls.first;
-
     return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.4, // Altura reduzida para melhor equilíbrio
+      height: MediaQuery.of(context).size.height * 0.4,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,
@@ -533,15 +526,15 @@ class _TravelHomeScreenState extends State<TravelHomeScreen> {
           Image.network(
             imageUrl,
             fit: BoxFit.cover,
-            alignment: Alignment.center, // Alterado para centralizar para um enquadramento potencialmente melhor
-            errorBuilder: (context, error, stackTrace) { // Lidar com erros de carregamento de imagem
+            alignment: Alignment.center,
+            errorBuilder: (context, error, stackTrace) {
               return Container(
                 color: Colors.grey[300],
                 child: const Center(child: Icon(Icons.broken_image, color: Colors.grey, size: 50)),
               );
             },
           ),
-          Container(color: Colors.black.withOpacity(0.3)), // Sobreposição de gradiente ou sólida
+          Container(color: Colors.black.withOpacity(0.3)),
         ],
       ),
     );

@@ -176,32 +176,7 @@ class RecommendedDestination extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 5),
-          Row(
-            children: [
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: averageRating > 0 ? averageRating.toStringAsFixed(1) : "N/A",
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
-                      ),
-                    ),
-                    TextSpan(
-                      text: " ($totalReviews comentários)",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+
         ],
       ),
     );

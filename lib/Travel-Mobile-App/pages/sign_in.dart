@@ -5,6 +5,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -12,224 +14,284 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _passToggle = true;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final _formKey = GlobalKey<FormState>();
-  String? _passwordError;
-  bool _isLoading = false; // Variável para rastrear o estado de carregamento
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  bool _passToggle = true;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _signIn() async {
-    if (_formKey.currentState!.validate()) {
+    // Esconde o teclado para uma transição mais suave
+    FocusScope.of(context).unfocus();
+
+    if (_formKey.currentState?.validate() ?? false) {
       setState(() {
-        _isLoading = true; // Ativa o estado de carregamento
+        _isLoading = true;
       });
 
       try {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-              ),
-            );
-          },
-        );
-
         await _auth.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        Navigator.of(context).pop(); // Fecha o diálogo de carregamento
+        if (!mounted) return;
+        // Sucesso: Navega para a tela principal
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => TravelHomeScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const TravelHomeScreen()),
         );
-      } catch (e) {
-        setState(() {
-          _isLoading = false; // Desativa o estado de carregamento em caso de erro
-          if (e.toString().contains('wrong-password')) {
-            _passwordError = "Senha incorreta";
-          } else {
-            _passwordError = null;
-          }
-        });
 
-        // Fecha o diálogo de carregamento se houver um erro
-        Navigator.of(context).pop();
+      } on FirebaseAuthException catch (e) {
+        // Trata os erros específicos do Firebase
+        String errorMessage = "Ocorreu um erro. Tente novamente mais tarde.";
+        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+          errorMessage = "E-mail ou senha incorretos. Por favor, verifique e tente novamente.";
+        } else if (e.code == 'invalid-email') {
+          errorMessage = "O formato do e-mail é inválido.";
+        }
 
-        // Exibe o pop-up com a mensagem de erro
+        if (!mounted) return;
+        // Exibe um diálogo de erro elegante
         showDialog(
           context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              title: Text("Erro"),
-              content: Text(
-                _passwordError ?? "Erro ao fazer login. Verifique se seu e-mail e senha estão corretos.",
-                style: TextStyle(fontSize: 20),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  child: Text(
-                    "OK",
-                    style: TextStyle(color: Colors.black, fontSize: 28),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 10),
+                Text("Erro de Login"),
               ],
-            );
-          },
+            ),
+            content: Text(errorMessage),
+            actions: <Widget>[
+              TextButton(
+                child: const Text("OK"),
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ],
+          ),
         );
-
-        // Revalida o formulário para exibir a mensagem de erro no campo de senha
-        _formKey.currentState!.validate();
+      } finally {
+        // Garante que o estado de carregamento seja desativado
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: SingleChildScrollView(
+    return Scaffold(
+      body: Container(
+        // ⭐ ALTERAÇÃO AQUI: Fundo com a cor sólida solicitada ⭐
+        color: const Color(0xFF263892),
         child: SafeArea(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TextFormField(
-                    controller: _emailController,
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return "Digite seu E-mail";
-                      }
-                      return null;
-                    },
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.black, width: 2.0),
-                      ),
-                      labelStyle: TextStyle(
-                        color: Colors.black,
-                      ),
-                      labelText: "E-mail",
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TextFormField(
-                    controller: _passwordController,
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return "Digite sua senha";
-                      } else if (_passwordError != null) {
-                        return _passwordError;
-                      }
-                      return null;
-                    },
-                    obscureText: _passToggle,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.black, width: 2.0),
-                      ),
-                      labelStyle: TextStyle(
-                        color: Colors.black,
-                      ),
-                      labelText: "Senha",
-                      prefixIcon: Icon(Icons.lock),
-                      suffixIcon: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _passToggle = !_passToggle;
-                          });
-                        },
-                        child: _passToggle
-                            ? Icon(CupertinoIcons.eye_slash_fill)
-                            : Icon(CupertinoIcons.eye_fill),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.all(15),
-                  child: InkWell(
-                    onTap: _isLoading ? null : _signIn, // Desabilita o botão durante o carregamento
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: _isLoading ? Colors.grey : Color(0xFF000000), // Muda a cor do botão quando está carregando
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          _isLoading ? "Carregando..." : "Login",
-                          style: TextStyle(
-                            fontSize: 23,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Row(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      "Ainda não criou uma conta?",
+                    // --- Sua Logo ---
+                    Image.asset(
+                      'assets/travel-app/logo.png',
+                      height: 120,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- Textos de Boas-vindas ---
+                    const Text(
+                      'Bem-vindo de volta!',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black54,
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SignUpScreen(),
-                          ),
-                        );
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Faça o login para explorar novos destinos.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // --- Campo de E-mail ---
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      style: const TextStyle(color: Colors.white),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Por favor, insira seu e-mail.";
+                        }
+                        if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
+                          return "Por favor, insira um e-mail válido.";
+                        }
+                        return null;
                       },
-                      child: Text(
-                        "Criar conta",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF000000),
+                      decoration: _buildInputDecoration(
+                        labelText: 'E-mail',
+                        prefixIcon: Icons.email_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- Campo de Senha ---
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _passToggle,
+                      style: const TextStyle(color: Colors.white),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Por favor, insira sua senha.";
+                        }
+                        return null;
+                      },
+                      decoration: _buildInputDecoration(
+                        labelText: 'Senha',
+                        prefixIcon: Icons.lock_outline,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _passToggle ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
+                            color: Colors.white70,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _passToggle = !_passToggle;
+                            });
+                          },
                         ),
                       ),
                     ),
+                    const SizedBox(height: 30),
+
+                    // --- Botão de Login ---
+                    _buildLoginButton(),
+                    const SizedBox(height: 30),
+
+                    // --- Seção para Criar Conta ---
+                    _buildSignUpSection(),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // --- Widgets Auxiliares para um código mais limpo ---
+
+  Widget _buildLoginButton() {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _signIn,
+      style: ElevatedButton.styleFrom(
+        foregroundColor: const Color(0xFF263892),
+        backgroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 5,
+        shadowColor: Colors.black.withOpacity(0.4),
+      ),
+      child: _isLoading
+          ? const SizedBox(
+        height: 24,
+        width: 24,
+        child: CircularProgressIndicator(
+          color: Color(0xFF263892),
+          strokeWidth: 3,
+        ),
+      )
+          : const Text(
+        'LOGIN',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildSignUpSection() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          "Não tem uma conta?",
+          style: TextStyle(color: Colors.white70),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => SignUpScreen()),
+            );
+          },
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text(
+            "Crie uma agora",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _buildInputDecoration({
+    required String labelText,
+    required IconData prefixIcon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      labelStyle: const TextStyle(color: Colors.white70),
+      prefixIcon: Icon(prefixIcon, color: Colors.white70),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.1),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.white, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
       ),
     );
   }

@@ -169,20 +169,7 @@ class PopularPlace extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Row(
-                    children: [
-                      Icon(Icons.star_rounded, size: 16, color: Colors.amber[700]),
-                      const SizedBox(width: 4),
-                      Text(
-                        averageRating > 0 ? averageRating.toStringAsFixed(1) : "N/A",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
+                  
                 ],
               ),
             ],
